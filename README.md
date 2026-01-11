@@ -1,71 +1,173 @@
-# Are you looking for the source code for my book?
+# 区块链极简实现
+本项目是基于 **FastAPI** 构建的轻量化区块链学习项目，通过简洁易懂的Python代码还原了区块链的核心底层逻辑，包括创世块生成、工作量证明（PoW）、交易创建、节点注册与分布式共识机制。
 
-Please find it here: https://github.com/dvf/blockchain-book
+## 一、项目核心特性
+1.  **完整区块链核心逻辑**：实现创世块、区块锻造、交易管理、工作量证明、共识算法（最长有效链）。
+2.  **现代Web框架加持**：基于FastAPI构建，支持异步特性、自动生成可交互API文档，接口规范且易于测试。
+3.  **严格数据校验**：通过Pydantic定义请求模型，自动完成交易、节点注册的参数校验，减少异常报错。
+4.  **分布式节点支持**：支持多节点注册与数据同步，验证区块链的分布式特性。
+5.  **无复杂依赖**：核心依赖仅3个，部署简单，本地可快速模拟多节点网络。
 
-The book is available on Amazon: https://www.amazon.com/Learn-Blockchain-Building-Understanding-Cryptocurrencies/dp/1484251709
+## 二、环境准备
+### 1. 基础要求
+- Python 3.8+（FastAPI推荐最低3.8，兼容Pydantic和ASGI特性）
+- 操作系统：Windows/Mac/Linux（无特殊限制，本地多节点测试需端口互通）
 
-# Learn Blockchains by Building One
-
-[![Build Status](https://travis-ci.org/dvf/blockchain.svg?branch=master)](https://travis-ci.org/dvf/blockchain)
-
-This is the source code for my post on [Building a Blockchain](https://medium.com/p/117428612f46). 
-
-## Installation
-
-1. Make sure [Python 3.6+](https://www.python.org/downloads/) is installed. 
-2. Install [pipenv](https://github.com/kennethreitz/pipenv). 
-
-```
-$ pip install pipenv 
-```
-3. Install requirements  
-```
-$ pipenv install 
-``` 
-
-4. Run the server:
-    * `$ pipenv run python blockchain.py` 
-    * `$ pipenv run python blockchain.py -p 5001`
-    * `$ pipenv run python blockchain.py --port 5002`
-    
-## Docker
-
-Another option for running this blockchain program is to use Docker.  Follow the instructions below to create a local Docker container:
-
-1. Clone this repository
-2. Build the docker container
-
-```
-$ docker build -t blockchain .
+### 2. 依赖安装
+```bash
+# 安装核心运行依赖
+pip install -r requirements.txt
 ```
 
-3. Run the container
+## 三、快速运行
+### 1. 项目文件说明
+核心文件为 `blockchain.py`（可直接复制本文提供的完整代码），文件包含两大核心部分：`Blockchain` 类（区块链业务逻辑）和 FastAPI 接口层（外部交互入口）。
 
+### 2. 启动单节点
+#### 方式1：直接运行Python文件（推荐，自带端口配置）
+```bash
+# 进入文件所在目录，运行代码
+python blockchain.py
 ```
-$ docker run --rm -p 80:5000 blockchain
+- 默认启动端口为 `5000`，终端会显示 `Uvicorn running on http://0.0.0.0:5000`，表示启动成功。
+- `--reload` 开启了开发环境热重载，修改代码后会自动重启服务，生产环境可移除该配置。
+
+#### 方式2：手动用uvicorn启动（自定义端口更灵活）
+```bash
+# 格式：uvicorn 文件名:FastAPI实例名 --port 端口号 --reload
+uvicorn blockchain:app --reload --port 5001
 ```
+- 示例中启动端口为 `5001`，可根据需要修改为 `5002`、`5003` 等，用于模拟多节点。
 
-4. To add more instances, vary the public port number before the colon:
+### 3. 验证启动成功
+打开浏览器，访问以下地址之一，即可看到自动生成的API文档，说明服务启动正常：
+- Swagger UI（可交互测试，推荐）：`http://localhost:5000/docs`
+- ReDoc（规范文档展示）：`http://localhost:5000/redoc`
 
-```
-$ docker run --rm -p 81:5000 blockchain
-$ docker run --rm -p 82:5000 blockchain
-$ docker run --rm -p 83:5000 blockchain
-```
+## 四、核心功能与交互式测试
+借助FastAPI的自动交互式文档，无需编写复杂命令，即可完成所有功能测试，核心步骤如下（以 `http://localhost:5000/docs` 为例）：
 
-## Installation (C# Implementation)
+### 1. 查看完整区块链（验证创世块）
+- 找到 `/chain` 接口，点击「Try it out」→ 点击「Execute」。
+- **预期响应**：
+  - 状态码 `200`。
+  - 响应体包含 `chain`（区块链数组）和 `length`（区块链长度）。
+  - 初始状态下 `length: 1`，仅包含创世块（`index: 1`、`proof: 100`、`previous_hash: "1"`），说明区块链初始化成功。
 
-1. Install a free copy of Visual Studio IDE (Community Edition):
-https://www.visualstudio.com/vs/
+### 2. 挖矿生成新区块（核心功能：工作量证明）
+- 找到 `/mine` 接口，点击「Try it out」→ 点击「Execute」。
+- **功能说明**：运行工作量证明算法，找到符合条件的随机数（哈希前4位为`0000`），锻造新区块并获得挖矿奖励（1个虚拟代币）。
+- **预期响应**：
+  - 状态码 `200`。
+  - 响应体包含 `message: "New Block Forged"`，以及新区块的 `index`（第2个区块）、`transactions`（挖矿奖励交易，`sender: "0"` 表示系统奖励）、`proof`（符合条件的工作量证明值）、`previous_hash`（前一个区块的哈希值）。
+- 再次调用 `/chain` 接口，可看到区块链长度变为 `2`，新区块已被加入链中。
 
-2. Once installed, open the solution file (BlockChain.sln) using the File > Open > Project/Solution menu options within Visual Studio.
+### 3. 创建新交易（待写入区块的交易缓存）
+- 找到 `/transactions/new` 接口，点击「Try it out」。
+- 在请求体中填写测试数据（保持字段结构不变，替换值即可）：
+  ```json
+  {
+    "sender": "user_001_abcdef",
+    "recipient": "user_002_fedcba",
+    "amount": 10.0
+  }
+  ```
+- 点击「Execute」。
+- **预期响应**：
+  - 状态码 `201`。
+  - 响应体包含 `message: "Transaction will be added to Block 3"`，表示交易已被缓存，将在下一次挖矿时写入第3个区块。
+- **说明**：未挖矿的交易仅存储在 `current_transactions` 中，不会出现在 `/chain` 接口的返回结果中。
 
-3. From within the "Solution Explorer", right click the BlockChain.Console project and select the "Set As Startup Project" option.
+### 4. 验证交易写入区块
+- 再次调用 `/mine` 接口，锻造第3个区块。
+- 调用 `/chain` 接口，查看第3个区块的 `transactions` 字段，可看到步骤3中创建的交易已被写入，说明交易缓存与区块锻造逻辑正常。
 
-4. Click the "Start" button, or hit F5 to run. The program executes in a console window, and is controlled via HTTP with the same commands as the Python version.
+### 5. 注册新节点（构建分布式节点网络）
+- 找到 `/nodes/register` 接口，点击「Try it out」。
+- 在请求体中填写待注册的节点地址（模拟分布式网络，可填写后续要启动的节点端口）：
+  ```json
+  {
+    "nodes": ["http://localhost:5001"]
+  }
+  ```
+- 点击「Execute」。
+- **预期响应**：
+  - 状态码 `201`。
+  - 响应体包含 `total_nodes: ["localhost:5001"]`，表示节点已成功注册到当前区块链网络。
 
+### 6. 共识算法验证（同步最长有效链）
+- 单节点场景下，调用 `/nodes/resolve` 接口，会返回 `message: "Our chain is authoritative"`，表示当前链是网络中的权威链，无需替换。
+- 多节点场景下，该接口会自动同步网络中最长的合法链，详细步骤见「进阶实操：多节点共识测试」。
 
-## Contributing
+## 四、核心代码结构解析
+代码分为「区块链业务逻辑层」和「FastAPI Web接口层」，解耦清晰，易于理解和扩展。
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### 1. 区块链业务逻辑层：`Blockchain` 类
+这是项目的核心，实现了区块链的所有底层逻辑，关键方法说明：
+| 方法/属性 | 核心功能 |
+|-----------|----------|
+| `__init__()` | 初始化区块链，创建创世块（第一个区块，无前置区块），初始化交易缓存和节点集合。 |
+| `new_block(proof, previous_hash)` | 创建新区块，清空当前交易缓存，将新区块加入区块链。 |
+| `new_transaction(sender, recipient, amount)` | 新增交易到缓存，返回该交易将被写入的区块索引。 |
+| `hash(block)` | 对区块进行SHA-256哈希计算，保证区块不可篡改。 |
+| `proof_of_work(last_block)` | 工作量证明算法，找到符合条件的随机数（哈希前4位为`0000`）。 |
+| `valid_proof(last_proof, proof, last_hash)` | 验证工作量证明是否有效。 |
+| `valid_chain(chain)` | 验证整个区块链的合法性（哈希连续、工作量证明有效）。 |
+| `resolve_conflicts()` | 共识算法，同步网络中最长的合法链，实现分布式节点数据一致性。 |
+| `register_node(address)` | 注册新节点，解析节点地址并加入节点集合。 |
 
+### 2. FastAPI Web接口层
+负责对外提供HTTP接口，实现用户与区块链的交互，关键组件说明：
+- **FastAPI实例初始化**：配置文档标题、描述和版本，自动生成API文档。
+- **Pydantic数据模型**：`TransactionCreate`（交易创建请求）、`NodeRegister`（节点注册请求），自动完成参数校验和类型转换，避免手动校验的繁琐。
+- **接口定义**：5个核心接口对应区块链的5大功能，直接调用 `Blockchain` 类的方法，实现业务逻辑与Web层的解耦。
+- **错误处理**：通过 `HTTPException` 返回标准化错误信息，符合RESTful API规范。
+
+## 五、进阶实操：多节点共识测试（验证分布式特性）
+区块链的核心是分布式一致性，通过启动多个节点，可验证「最长有效链」共识规则（短链会被长链自动替换），步骤如下：
+
+### 步骤1：启动3个节点（不同端口）
+- 终端1：节点1（端口5000）→ `python blockchain.py`
+- 终端2：节点2（端口5001）→ `uvicorn blockchain:app --reload --port 5001`
+- 终端3：节点3（端口5002）→ `uvicorn blockchain:app --reload --port 5002`
+
+### 步骤2：节点互相注册（构建网络）
+- 访问节点1的文档（`http://localhost:5000/docs`），调用 `/nodes/register` 接口，注册节点2和节点3：
+  ```json
+  {
+    "nodes": ["http://localhost:5001", "http://localhost:5002"]
+  }
+  ```
+- 同理，在节点2（`5001`）和节点3（`5002`）的文档中，分别注册另外两个节点，实现全网节点互通。
+
+### 步骤3：让节点2生成长链
+- 连续调用节点2的 `/mine` 接口3次，锻造第2、3、4个区块，此时节点2的区块链长度为 `4`（长链）。
+- 调用节点2的 `/chain` 接口，确认链长度为 `4`。
+
+### 步骤4：节点1同步长链（验证共识）
+- 访问节点1的文档，调用 `/nodes/resolve` 接口。
+- **预期响应**：返回 `message: "Our chain was replaced"`，且 `new_chain` 长度为 `4`。
+- 调用节点1的 `/chain` 接口，确认链长度已变为 `4`，说明节点1的短链已被节点2的长链替换，共识机制生效。
+
+### 步骤5：验证节点3同步
+- 重复步骤4，调用节点3的 `/nodes/resolve` 接口，可看到节点3也会同步到长度为 `4` 的长链，实现全网数据一致性。
+
+## 六、注意事项与扩展方向
+### 1. 注意事项
+- 本项目为**学习演示用**，未实现数据持久化（重启节点后，区块链数据会丢失）、加密钱包、P2P直连等生产级特性。
+- 工作量证明算法较为简单（仅要求哈希前4位为`0000`），可通过增加零的位数提高难度。
+- 节点间通信采用同步`requests`库，后续可替换为异步`httpx`，提升高并发场景下的性能。
+- 强制修改区块链数据后，链的合法性会被破坏，其他节点不会同步该非法链，体现了区块链的不可篡改性。
+
+### 2. 扩展方向（适合进阶学习）
+1.  **数据持久化**：将区块链数据存储到本地文件（JSON/CSV）或数据库（SQLite/MySQL），实现节点重启后数据不丢失。
+2.  **更安全的交易**：实现公私钥加密，验证交易发送者的身份合法性，防止伪造交易。
+3.  **优化共识算法**：替换为PoS（权益证明）、DPoS（委托权益证明）等其他共识机制。
+4.  **前端界面**：构建Vue/React前端界面，实现可视化的区块链查询、交易创建和挖矿操作。
+5.  **容器化部署**：通过Docker构建镜像，快速部署多节点区块链网络，无需手动配置环境。
+
+## 七、总结
+本项目通过FastAPI快速实现了区块链的核心功能，既保留了区块链的底层逻辑完整性，又借助现代Web框架的特性降低了上手和测试成本。
+通过本项目，你可以直观理解区块结构、工作量证明、共识算法等核心概念，为后续深入学习比特币、以太坊等主流区块链系统打下坚实基础。
+
+如果在实操过程中遇到端口冲突、节点注册失败等问题，可优先检查端口是否被占用、节点地址格式是否正确（如 `http://localhost:5001` 无多余空格）。
